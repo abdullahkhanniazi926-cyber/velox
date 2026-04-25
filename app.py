@@ -341,6 +341,22 @@ def ai_file():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# --- VOICE TRANSCRIPTION ROUTE ---
+@app.route("/transcribe", methods=["POST"])
+def transcribe():
+    try:
+        file = request.files.get("file")
+        if not file:
+            return jsonify({"error": "No audio file"}), 400
 
+        # Use Groq Whisper for transcription
+        transcription = client.audio.transcriptions.create(
+            model="whisper-large-v3",
+            file=(file.filename, file.read(), file.content_type),
+        )
+        return jsonify({"text": transcription.text})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)
