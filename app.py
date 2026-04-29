@@ -32,35 +32,44 @@ def index():
 @app.route("/search")
 def search():
     query = request.args.get("q", "")
-    page = int(request.args.get("page", 1))
+    page  = int(request.args.get("page", 1))
     per_page = 5
 
     if not query:
         return jsonify({"results": [], "total": 0, "pages": 0})
 
     try:
-        search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(query)}&format=json&srlimit=30"
-        req = urllib.request.Request(search_url, headers={"User-Agent": "Velox/1.0"})
-        with urllib.request.urlopen(req) as response:
-            data = json.loads(response.read())
+        from serpapi import GoogleSearch
 
-        search_results = data.get("query", {}).get("search", [])
+        params = {
+            "q":       query,
+            "api_key": os.getenv("SERPAPI_KEY"),
+            "num":     30,
+            "start":   (page - 1) * per_page
+        }
+
+        search_results = GoogleSearch(params)
+        data           = search_results.get_dict()
+        organic        = data.get("organic_results", [])
+
         results = []
-        for r in search_results:
-            title = r.get("title", "")
-            snippet = r.get("snippet", "").replace('<span class="searchmatch">', "").replace("</span>", "")
-            url = f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
-            results.append({"title": title, "url": url, "description": snippet})
+        for r in organic:
+            results.append({
+                "title":       r.get("title", ""),
+                "url":         r.get("link", ""),
+                "description": r.get("snippet", "")
+            })
 
-        total = len(results)
-        pages = (total + per_page - 1) // per_page
-        start = (page - 1) * per_page
-        paginated = results[start:start + per_page]
+        total    = len(results)
+        pages    = (total + per_page - 1) // per_page
+        start    = 0
+        end      = per_page
+        paginated = results[start:end]
 
         return jsonify({
-            "results": paginated,
-            "total": total,
-            "pages": pages,
+            "results":      paginated,
+            "total":        total,
+            "pages":        pages,
             "current_page": page
         })
 
