@@ -31,8 +31,8 @@ def index():
 # --- SEARCH ROUTE ---
 @app.route("/search")
 def search():
-    query = request.args.get("q", "")
-    page  = int(request.args.get("page", 1))
+    query    = request.args.get("q", "")
+    page     = int(request.args.get("page", 1))
     per_page = 5
 
     if not query:
@@ -44,7 +44,7 @@ def search():
         params = {
             "q":       query,
             "api_key": os.getenv("SERPAPI_KEY"),
-            "num":     30,
+            "num":     10,
             "start":   (page - 1) * per_page
         }
 
@@ -60,11 +60,28 @@ def search():
                 "description": r.get("snippet", "")
             })
 
-        total    = len(results)
-        pages    = (total + per_page - 1) // per_page
-        start    = 0
-        end      = per_page
+        total     = max(len(results), 1)
+        pages     = max((total + per_page - 1) // per_page, 1)
+        start     = 0
+        end       = per_page
         paginated = results[start:end]
+
+        if not paginated:
+            # Fallback to Wikipedia if no results
+            search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote(query)}&format=json&srlimit=10"
+            req = urllib.request.Request(search_url, headers={"User-Agent": "Velox/1.0"})
+            with urllib.request.urlopen(req) as response:
+                wiki_data = json.loads(response.read())
+
+            wiki_results = wiki_data.get("query", {}).get("search", [])
+            for r in wiki_results:
+                title   = r.get("title", "")
+                snippet = r.get("snippet", "").replace('<span class="searchmatch">', "").replace("</span>", "")
+                url     = f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
+                paginated.append({"title": title, "url": url, "description": snippet})
+
+            total = len(paginated)
+            pages = 1
 
         return jsonify({
             "results":      paginated,
