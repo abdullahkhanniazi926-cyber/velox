@@ -470,6 +470,12 @@ function AIChatbot({ language }) {
 // --- RESULT CARD COMPONENT ---
 function ResultCard({ title, url, description, bookmarks, onBookmark }) {
   const isBookmarked = bookmarks.some(b => b.url === url);
+  const domain = (() => {
+    try { return new URL(url).hostname; }
+    catch { return url; }
+  })();
+  const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+
   return (
     <div className="result-card">
       <button
@@ -479,8 +485,17 @@ function ResultCard({ title, url, description, bookmarks, onBookmark }) {
       >
         {isBookmarked ? "⭐" : "☆"}
       </button>
+      <div className="result-card-header">
+        <div className="result-favicon">
+          <img
+            src={faviconUrl}
+            alt=""
+            onError={(e) => e.target.style.display = "none"}
+          />
+        </div>
+        <span className="result-domain">{domain}</span>
+      </div>
       <a href={url} target="_blank" rel="noreferrer">{title}</a>
-      <p className="result-url">{url}</p>
       <p className="result-desc">{description}</p>
     </div>
   );
